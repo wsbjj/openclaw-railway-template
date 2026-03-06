@@ -102,6 +102,22 @@
       modelApiKeyHint: 'Leave blank to keep existing key',
       modelApiSave: 'Save',
       modelApiModelRequired: 'Please enter a model (provider/model-id).',
+      minimaxRegionLabel: 'MiniMax region',
+      minimaxRegionGlobal: 'Global — api.minimax.io',
+      minimaxRegionCN: 'CN — api.minimaxi.com',
+      memorySearchTitle: 'Memory Search',
+      memorySearchSubtitle: 'Semantic search over MEMORY.md and memory/*.md. Requires an embedding API key (OpenAI, Gemini, or custom).',
+      memorySearchEnabled: 'Enable memory search',
+      memorySearchProvider: 'Embedding provider',
+      memorySearchProviderAuto: 'Auto (OpenAI → Gemini → disable)',
+      memorySearchProviderOpenAI: 'OpenAI',
+      memorySearchProviderGoogle: 'Google (Gemini)',
+      memorySearchProviderVoyage: 'Voyage',
+      memorySearchProviderMistral: 'Mistral',
+      memorySearchProviderRemote: 'Custom (OpenAI-compatible endpoint)',
+      memorySearchRemoteUrl: 'Embedding API base URL',
+      memorySearchRemoteUrlPlaceholder: 'https://your-embedding-api.com/v1',
+      memorySearchSave: 'Save',
     },
     zh: {
       pageTitle: '个人 AI 助手',
@@ -195,6 +211,22 @@
       modelApiKeyHint: '留空则保持当前密钥不变',
       modelApiSave: '保存',
       modelApiModelRequired: '请输入模型（格式：提供商/模型-id）。',
+      minimaxRegionLabel: 'MiniMax 区域',
+      minimaxRegionGlobal: '国际版 — api.minimax.io',
+      minimaxRegionCN: '国内版 — api.minimaxi.com',
+      memorySearchTitle: '内存搜索',
+      memorySearchSubtitle: '对 MEMORY.md 与 memory/*.md 进行语义检索，需配置嵌入 API（OpenAI、Gemini 或自定义端点）。',
+      memorySearchEnabled: '启用内存搜索',
+      memorySearchProvider: '嵌入服务',
+      memorySearchProviderAuto: '自动（OpenAI → Gemini → 关闭）',
+      memorySearchProviderOpenAI: 'OpenAI',
+      memorySearchProviderGoogle: 'Google (Gemini)',
+      memorySearchProviderVoyage: 'Voyage',
+      memorySearchProviderMistral: 'Mistral',
+      memorySearchProviderRemote: '自定义（OpenAI 兼容端点）',
+      memorySearchRemoteUrl: '嵌入 API 地址',
+      memorySearchRemoteUrlPlaceholder: 'https://your-embedding-api.com/v1',
+      memorySearchSave: '保存',
     },
   };
   document.addEventListener('alpine:init', () => {
@@ -235,6 +267,13 @@
       modelApiKey: '',
       modelApiLog: '',
       modelApiLoading: false,
+      minimaxEndpoint: 'global',
+      memorySearchEnabled: true,
+      memorySearchProvider: 'auto',
+      memorySearchRemoteBaseUrl: '',
+      memorySearchRemoteApiKey: '',
+      memorySearchLog: '',
+      memorySearchLoading: false,
 
       get currentGroup() {
         return this.authGroups.find(g => g.value === this.selectedGroup);
@@ -278,6 +317,16 @@
           if (this.currentModel && !this.modelApiModel) this.modelApiModel = this.currentModel;
           const mpc = j.modelProviderConfig;
           if (mpc && mpc.baseUrl !== undefined) this.modelApiBaseUrl = mpc.baseUrl || '';
+          if (mpc?.provider === 'minimax') {
+            if ((mpc.baseUrl || '').indexOf('minimaxi.com') >= 0) this.minimaxEndpoint = 'cn';
+            else this.minimaxEndpoint = 'global';
+          }
+          const msc = j.memorySearchConfig;
+          if (msc) {
+            this.memorySearchEnabled = msc.enabled !== false;
+            this.memorySearchProvider = msc.provider || 'auto';
+            this.memorySearchRemoteBaseUrl = msc.remoteBaseUrl || '';
+          }
           this.authGroups = j.authGroups || [];
           if (this.authGroups.length > 0) {
             this.selectedGroup = this.authGroups[0].value;
@@ -315,6 +364,7 @@
         const payload = { model };
         if (this.modelApiBaseUrl !== undefined) payload.baseUrl = (this.modelApiBaseUrl || '').trim();
         if ((this.modelApiKey || '').trim()) payload.apiKey = (this.modelApiKey || '').trim();
+        if (model.startsWith('minimax/')) payload.minimaxEndpoint = this.minimaxEndpoint;
         try {
           const res = await fetch('/setup/api/model', {
             method: 'POST',
@@ -336,6 +386,35 @@
         }
       },
 
+      async saveMemorySearch() {
+        this.memorySearchLog = this.t('running') + '\n';
+        this.memorySearchLoading = true;
+        const payload = {
+          enabled: this.memorySearchEnabled,
+          provider: this.memorySearchProvider || 'auto'
+        };
+        if (this.memorySearchProvider === 'remote') {
+          payload.remoteBaseUrl = (this.memorySearchRemoteBaseUrl || '').trim();
+          if ((this.memorySearchRemoteApiKey || '').trim()) payload.remoteApiKey = (this.memorySearchRemoteApiKey || '').trim();
+        }
+        try {
+          const res = await fetch('/setup/api/memory-search', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const j = await res.json().catch(() => ({}));
+          this.memorySearchLog += j.output || res.statusText || 'Done.\n';
+          if (j.ok) await this.refreshStatus();
+          if (j.ok && payload.remoteApiKey) this.memorySearchRemoteApiKey = '';
+        } catch (e) {
+          this.memorySearchLog += 'Error: ' + String(e) + '\n';
+        } finally {
+          this.memorySearchLoading = false;
+        }
+      },
+
       nextStep() {
         if (this.step < this.totalSteps) this.step++;
       },
@@ -344,11 +423,17 @@
         if (this.step > 1) this.step--;
       },
 
+      setMinimaxRegion(region) {
+        this.minimaxEndpoint = region;
+        this.modelApiBaseUrl = region === 'cn' ? 'https://api.minimaxi.com/anthropic' : 'https://api.minimax.io/anthropic';
+      },
+
       async runSetup() {
         const payload = {
           authChoice: this.selectedAuth,
           authSecret: this.authSecret,
           model: this.model,
+          minimaxEndpoint: this.selectedGroup === 'minimax' ? this.minimaxEndpoint : undefined,
           telegramToken: this.telegramToken,
           discordToken: this.discordToken,
           slackBotToken: this.slackBotToken,
@@ -641,6 +726,13 @@
           <input x-model="modelApiModel" type="text" :placeholder="t('modelPlaceholder')" class="input" />
           <p class="form-hint" x-text="t('formHintModel')"></p>
         </div>
+        <div x-show="(modelApiModel || currentModel || '').toString().startsWith('minimax/')" class="form-group">
+          <label class="label" x-text="t('minimaxRegionLabel')"></label>
+          <select x-model="minimaxEndpoint" @change="setMinimaxRegion(minimaxEndpoint)" class="select">
+            <option value="global" x-text="t('minimaxRegionGlobal')"></option>
+            <option value="cn" x-text="t('minimaxRegionCN')"></option>
+          </select>
+        </div>
         <div class="form-group">
           <label class="label" x-text="t('apiBaseUrlLabel')"></label>
           <input x-model="modelApiBaseUrl" type="url" :placeholder="t('apiBaseUrlPlaceholder')" class="input" />
@@ -658,6 +750,48 @@
           </span>
         </button>
         <div x-show="modelApiLog" class="log-output mt-4" style="margin-top:1rem" x-text="modelApiLog"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" style="font-size:1rem" x-text="t('memorySearchTitle')"></h3>
+        <p class="card-subtitle" x-text="t('memorySearchSubtitle')"></p>
+        <div class="form-group">
+          <label class="label" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+            <input type="checkbox" x-model="memorySearchEnabled" class="input" style="width:auto;margin:0" />
+            <span x-text="t('memorySearchEnabled')"></span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="label" x-text="t('memorySearchProvider')"></label>
+          <select x-model="memorySearchProvider" class="select">
+            <option value="auto" x-text="t('memorySearchProviderAuto')"></option>
+            <option value="openai" x-text="t('memorySearchProviderOpenAI')"></option>
+            <option value="google" x-text="t('memorySearchProviderGoogle')"></option>
+            <option value="voyage" x-text="t('memorySearchProviderVoyage')"></option>
+            <option value="mistral" x-text="t('memorySearchProviderMistral')"></option>
+            <option value="remote" x-text="t('memorySearchProviderRemote')"></option>
+          </select>
+        </div>
+        <template x-if="memorySearchProvider === 'remote'">
+          <div>
+            <div class="form-group">
+              <label class="label" x-text="t('memorySearchRemoteUrl')"></label>
+              <input x-model="memorySearchRemoteBaseUrl" type="url" :placeholder="t('memorySearchRemoteUrlPlaceholder')" class="input" />
+            </div>
+            <div class="form-group">
+              <label class="label" x-text="t('apiKeyLabel')"></label>
+              <input x-model="memorySearchRemoteApiKey" type="password" :placeholder="t('apiKeyPlaceholder')" class="input" />
+            </div>
+          </div>
+        </template>
+        <button @click="saveMemorySearch()" :disabled="memorySearchLoading" class="btn btn-primary">
+          <span x-show="!memorySearchLoading" x-text="t('memorySearchSave')"></span>
+          <span x-show="memorySearchLoading" style="display:inline-flex;align-items:center;gap:0.5rem">
+            <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span x-text="t('running')"></span>
+          </span>
+        </button>
+        <div x-show="memorySearchLog" class="log-output mt-4" style="margin-top:1rem" x-text="memorySearchLog"></div>
       </div>
 
       <div class="card">
@@ -789,6 +923,14 @@
               <template x-for="o in authChoices" :key="o.value">
                 <option :value="o.value" x-text="o.label + (o.hint ? ' — ' + o.hint : '')"></option>
               </template>
+            </select>
+          </div>
+
+          <div x-show="selectedGroup === 'minimax'" class="form-group">
+            <label class="label" x-text="t('minimaxRegionLabel')"></label>
+            <select x-model="minimaxEndpoint" class="select">
+              <option value="global" x-text="t('minimaxRegionGlobal')"></option>
+              <option value="cn" x-text="t('minimaxRegionCN')"></option>
             </select>
           </div>
 

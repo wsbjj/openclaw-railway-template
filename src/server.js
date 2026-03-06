@@ -182,6 +182,26 @@ function getModelProviderConfigForStatus(config, currentModel) {
   };
 }
 
+/** Get memory search config for UI (no raw API keys). */
+function getMemorySearchConfigForStatus(config) {
+  const defaults = config.agents?.defaults ?? {};
+  const mem = defaults.memorySearch ?? {};
+  const enabled = mem.enabled !== false;
+  const provider = mem.provider ?? config.memorySearch?.provider ?? "";
+  const remote = config.memorySearch?.remote ?? {};
+  return {
+    enabled,
+    provider: provider || "auto",
+    remoteBaseUrl: remote.baseUrl ?? "",
+    remoteApiKeySet: Boolean(
+      remote.apiKey &&
+        typeof remote.apiKey === "string" &&
+        remote.apiKey.trim() &&
+        remote.apiKey !== "undefined",
+    ),
+  };
+}
+
 async function syncAllowedOrigins() {
   const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
   if (!publicDomain) return;
@@ -552,6 +572,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
 
   let currentModel = null;
   let modelProviderConfig = null;
+  let memorySearchConfig = null;
   if (isConfigured()) {
     try {
       const r = await runCmd(
@@ -563,6 +584,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
       }
       const config = getConfig();
       modelProviderConfig = getModelProviderConfigForStatus(config, currentModel);
+      memorySearchConfig = getMemorySearchConfigForStatus(config);
     } catch (_) {
       // ignore
     }
@@ -577,6 +599,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
     tuiEnabled: ENABLE_WEB_TUI,
     currentModel,
     modelProviderConfig,
+    memorySearchConfig,
   });
 });
 
@@ -769,6 +792,25 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
         );
         extra += `[models set] exit=${modelResult.code}\n${modelResult.output || ""}`;
       }
+      const isMinimax =
+        payload.authChoice?.startsWith("minimax-") &&
+        (payload.model?.trim() || "").startsWith("minimax/");
+      if (isMinimax && payload.minimaxEndpoint === "cn") {
+        extra += "[setup] Setting MiniMax endpoint to CN (api.minimaxi.com)...\n";
+        const existing = getConfig().models?.providers?.minimax ?? {};
+        const cnConfig = { ...DEFAULT_PROVIDER_CONFIG.minimax, ...existing, baseUrl: MINIMAX_BASE_CN };
+        const cnResult = await runCmd(
+          OPENCLAW_NODE,
+          clawArgs([
+            "config",
+            "set",
+            "--json",
+            "models.providers.minimax",
+            JSON.stringify(cnConfig),
+          ]),
+        );
+        extra += `[config models.providers.minimax] exit=${cnResult.code}\n`;
+      }
 
       async function configureChannel(name, cfgObj) {
         const set = await runCmd(
@@ -835,9 +877,12 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
   }
 });
 
+const MINIMAX_BASE_GLOBAL = "https://api.minimax.io/anthropic";
+const MINIMAX_BASE_CN = "https://api.minimaxi.com/anthropic";
+
 const DEFAULT_PROVIDER_CONFIG = {
   minimax: {
-    baseUrl: "https://api.minimax.io/anthropic",
+    baseUrl: MINIMAX_BASE_GLOBAL,
     api: "anthropic-messages",
     models: [],
   },
@@ -855,15 +900,18 @@ app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
   }
   const payload = req.body || {};
   const model = typeof payload.model === "string" ? payload.model.trim() : "";
-  const baseUrl = typeof payload.baseUrl === "string" ? payload.baseUrl.trim() : "";
+  let baseUrl = typeof payload.baseUrl === "string" ? payload.baseUrl.trim() : "";
   const apiKey = typeof payload.apiKey === "string" ? payload.apiKey.trim() : "";
+  const provider = getProviderFromModel(model);
+  if (provider === "minimax" && payload.minimaxEndpoint === "cn") {
+    baseUrl = baseUrl || MINIMAX_BASE_CN;
+  }
   if (!model) {
     return res.status(400).json({
       ok: false,
       output: "Missing or invalid model. Provide provider/model-id (e.g. minimax/MiniMax-M2.5).",
     });
   }
-  const provider = getProviderFromModel(model);
   const lines = [];
 
   try {
@@ -912,6 +960,78 @@ app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
     });
   } catch (err) {
     log.error("setup", `model update error: ${String(err)}`);
+    return res
+      .status(500)
+      .json({ ok: false, output: `Internal error: ${String(err)}` });
+  }
+});
+
+const MEMORY_SEARCH_PROVIDERS = ["auto", "openai", "google", "voyage", "mistral", "remote"];
+
+app.post("/setup/api/memory-search", requireSetupAuth, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(400).json({
+      ok: false,
+      output: "Not configured. Run the setup wizard first.",
+    });
+  }
+  const payload = req.body || {};
+  const enabled = payload.enabled !== false;
+  const provider = typeof payload.provider === "string" ? payload.provider.trim() || "auto" : "auto";
+  const remoteBaseUrl = typeof payload.remoteBaseUrl === "string" ? payload.remoteBaseUrl.trim() : "";
+  const remoteApiKey = typeof payload.remoteApiKey === "string" ? payload.remoteApiKey.trim() : "";
+  if (MEMORY_SEARCH_PROVIDERS.indexOf(provider) === -1) {
+    return res.status(400).json({
+      ok: false,
+      output: `Invalid provider. Use one of: ${MEMORY_SEARCH_PROVIDERS.join(", ")}`,
+    });
+  }
+  const lines = [];
+  try {
+    await ensureGatewayRunning();
+    const setEnabled = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "config",
+        "set",
+        "--json",
+        "agents.defaults.memorySearch.enabled",
+        JSON.stringify(enabled),
+      ]),
+    );
+    lines.push(`[memorySearch.enabled] exit=${setEnabled.code}`);
+    const providerValue = provider === "auto" ? "" : provider;
+    const setProvider = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "config",
+        "set",
+        "--json",
+        "agents.defaults.memorySearch.provider",
+        JSON.stringify(providerValue),
+      ]),
+    );
+    lines.push(`[memorySearch.provider] exit=${setProvider.code}`);
+    if (provider === "remote") {
+      const config = getConfig();
+      const remote = { ...(config.memorySearch?.remote ?? {}), baseUrl: remoteBaseUrl };
+      if (remoteApiKey) remote.apiKey = remoteApiKey;
+      const setRemote = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs([
+          "config",
+          "set",
+          "--json",
+          "memorySearch.remote",
+          JSON.stringify(remote),
+        ]),
+      );
+      lines.push(`[memorySearch.remote] exit=${setRemote.code}`);
+    }
+    lines.push(enabled ? "Memory search updated." : "Memory search disabled.");
+    return res.status(200).json({ ok: true, output: lines.join("\n") });
+  } catch (err) {
+    log.error("setup", `memory-search error: ${String(err)}`);
     return res
       .status(500)
       .json({ ok: false, output: `Internal error: ${String(err)}` });
