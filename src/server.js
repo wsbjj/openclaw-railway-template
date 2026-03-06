@@ -927,7 +927,38 @@ const DEFAULT_PROVIDER_CONFIG = {
   openai: { baseUrl: "https://api.openai.com/v1", api: "openai-completions", models: [] },
   anthropic: { baseUrl: "https://api.anthropic.com", api: "anthropic-messages", models: [] },
   moonshot: { baseUrl: "https://api.moonshot.ai/v1", api: "openai-completions", models: [] },
+  zai: { baseUrl: "https://api.z.ai/api/paas/v4", api: "openai-completions", models: [] },
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", api: "openai-completions", models: [] },
+  "ai-gateway": { baseUrl: "https://api.vercel.ai/v1", api: "openai-completions", models: [] },
 };
+
+app.get("/setup/api/models", requireSetupAuth, async (_req, res) => {
+  if (!isConfigured()) {
+    return res.json({ models: [] });
+  }
+  try {
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs(["models", "list", "--all"]),
+    );
+    const out = (result.output || "").trim();
+    const models = [];
+    for (const line of out.split("\n")) {
+      const trimmed = line.trim();
+      if (/^[a-z0-9-]+\/[a-zA-Z0-9._-]+$/i.test(trimmed)) {
+        models.push(trimmed);
+      } else {
+        const m = trimmed.match(/([a-z0-9-]+)\/([a-zA-Z0-9._-]+)/i);
+        if (m) models.push(m[1] + "/" + m[2]);
+      }
+    }
+    const unique = [...new Set(models)].sort();
+    return res.json({ models: unique });
+  } catch (err) {
+    log.warn("setup", `models list error: ${String(err)}`);
+    return res.json({ models: [] });
+  }
+});
 
 app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
   if (!isConfigured()) {
