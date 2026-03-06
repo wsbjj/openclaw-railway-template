@@ -148,6 +148,40 @@ function isConfigured() {
   }
 }
 
+function getConfig() {
+  try {
+    const raw = fs.readFileSync(configPath(), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function getProviderFromModel(modelId) {
+  if (!modelId || typeof modelId !== "string") return null;
+  const i = modelId.indexOf("/");
+  return i > 0 ? modelId.slice(0, i) : null;
+}
+
+/** Get current model's provider config for UI (baseUrl, apiKeySet). No raw key. */
+function getModelProviderConfigForStatus(config, currentModel) {
+  const provider = getProviderFromModel(currentModel);
+  if (!provider) return null;
+  const providers = config.models?.providers ?? {};
+  const p = providers[provider];
+  if (!p) return null;
+  const apiKey = p.apiKey;
+  const apiKeySet = Boolean(
+    apiKey && typeof apiKey === "string" && apiKey.trim() && apiKey !== "undefined",
+  );
+  return {
+    provider,
+    baseUrl: p.baseUrl ?? "",
+    apiKeySet,
+    api: p.api ?? "",
+  };
+}
+
 async function syncAllowedOrigins() {
   const publicDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
   if (!publicDomain) return;
@@ -517,6 +551,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
   ];
 
   let currentModel = null;
+  let modelProviderConfig = null;
   if (isConfigured()) {
     try {
       const r = await runCmd(
@@ -526,6 +561,8 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
       if (r.code === 0 && r.output && r.output.trim()) {
         currentModel = r.output.trim().replace(/^"|"$/g, "");
       }
+      const config = getConfig();
+      modelProviderConfig = getModelProviderConfigForStatus(config, currentModel);
     } catch (_) {
       // ignore
     }
@@ -539,6 +576,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
     authGroups,
     tuiEnabled: ENABLE_WEB_TUI,
     currentModel,
+    modelProviderConfig,
   });
 });
 
@@ -797,6 +835,17 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
   }
 });
 
+const DEFAULT_PROVIDER_CONFIG = {
+  minimax: {
+    baseUrl: "https://api.minimax.io/anthropic",
+    api: "anthropic-messages",
+    models: [],
+  },
+  openai: { baseUrl: "https://api.openai.com/v1", api: "openai-completions", models: [] },
+  anthropic: { baseUrl: "https://api.anthropic.com", api: "anthropic-messages", models: [] },
+  moonshot: { baseUrl: "https://api.moonshot.ai/v1", api: "openai-completions", models: [] },
+};
+
 app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
   if (!isConfigured()) {
     return res.status(400).json({
@@ -806,22 +855,60 @@ app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
   }
   const payload = req.body || {};
   const model = typeof payload.model === "string" ? payload.model.trim() : "";
+  const baseUrl = typeof payload.baseUrl === "string" ? payload.baseUrl.trim() : "";
+  const apiKey = typeof payload.apiKey === "string" ? payload.apiKey.trim() : "";
   if (!model) {
     return res.status(400).json({
       ok: false,
       output: "Missing or invalid model. Provide provider/model-id (e.g. minimax/MiniMax-M2.5).",
     });
   }
+  const provider = getProviderFromModel(model);
+  const lines = [];
+
   try {
     await ensureGatewayRunning();
-    const result = await runCmd(
+    const config = getConfig();
+    const providers = config.models?.providers ?? {};
+    const defaultProvider = DEFAULT_PROVIDER_CONFIG[provider];
+    let providerConfig = { ...(defaultProvider ?? {}), ...(providers[provider] ?? {}) };
+
+    if (baseUrl !== undefined) {
+      providerConfig.baseUrl = baseUrl || (defaultProvider?.baseUrl ?? "");
+    }
+    if (apiKey !== undefined && apiKey.length > 0) {
+      providerConfig.apiKey = apiKey;
+    }
+    if (!config.models) config.models = {};
+    if (!config.models.providers) config.models.providers = {};
+    if (config.models.mode !== "merge") config.models.mode = "merge";
+    config.models.providers[provider] = providerConfig;
+
+    const setProviderResult = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs([
+        "config",
+        "set",
+        "--json",
+        `models.providers.${provider}`,
+        JSON.stringify(providerConfig),
+      ]),
+    );
+    lines.push(`[config models.providers.${provider}] exit=${setProviderResult.code}`);
+    if (setProviderResult.output) lines.push(setProviderResult.output);
+
+    const modelResult = await runCmd(
       OPENCLAW_NODE,
       clawArgs(["models", "set", model]),
     );
-    const ok = result.code === 0;
+    const ok = modelResult.code === 0;
+    lines.push(`[models set] exit=${modelResult.code}`);
+    if (modelResult.output) lines.push(modelResult.output);
+    lines.push(ok ? `Model set to ${model}` : `Failed: exit ${modelResult.code}`);
+
     return res.status(ok ? 200 : 500).json({
       ok,
-      output: result.output || (ok ? `Model set to ${model}` : `Failed: exit ${result.code}`),
+      output: lines.join("\n"),
     });
   } catch (err) {
     log.error("setup", `model update error: ${String(err)}`);

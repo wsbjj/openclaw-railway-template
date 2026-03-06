@@ -95,9 +95,12 @@
       pairApproved: 'Pairing approved successfully',
       pairFailed: 'Pairing failed',
       modelApiTitle: 'Model API Settings',
-      modelApiSubtitle: 'View or change the default LLM model (e.g. minimax/MiniMax-M2.5)',
+      modelApiSubtitle: 'Configure default model, API base URL and API key',
       currentModelLabel: 'Current model',
-      modelApiSave: 'Save model',
+      apiBaseUrlLabel: 'API Base URL',
+      apiBaseUrlPlaceholder: 'e.g. https://api.minimax.io/anthropic',
+      modelApiKeyHint: 'Leave blank to keep existing key',
+      modelApiSave: 'Save',
       modelApiModelRequired: 'Please enter a model (provider/model-id).',
     },
     zh: {
@@ -185,9 +188,12 @@
       pairApproved: '配对已批准',
       pairFailed: '配对失败',
       modelApiTitle: '大模型 API 设置',
-      modelApiSubtitle: '查看或修改当前默认大模型（如 minimax/MiniMax-M2.5）',
+      modelApiSubtitle: '配置默认模型、API 地址与 API Key',
       currentModelLabel: '当前模型',
-      modelApiSave: '保存模型',
+      apiBaseUrlLabel: 'API Base URL',
+      apiBaseUrlPlaceholder: '如 https://api.minimax.io/anthropic',
+      modelApiKeyHint: '留空则保持当前密钥不变',
+      modelApiSave: '保存',
       modelApiModelRequired: '请输入模型（格式：提供商/模型-id）。',
     },
   };
@@ -225,6 +231,8 @@
       devicesPaired: [],
       currentModel: '',
       modelApiModel: '',
+      modelApiBaseUrl: '',
+      modelApiKey: '',
       modelApiLog: '',
       modelApiLoading: false,
 
@@ -268,6 +276,8 @@
           this.status = j.configured ? this.t('statusConfigured') : this.t('statusNotConfigured');
           this.currentModel = j.currentModel || '';
           if (this.currentModel && !this.modelApiModel) this.modelApiModel = this.currentModel;
+          const mpc = j.modelProviderConfig;
+          if (mpc && mpc.baseUrl !== undefined) this.modelApiBaseUrl = mpc.baseUrl || '';
           this.authGroups = j.authGroups || [];
           if (this.authGroups.length > 0) {
             this.selectedGroup = this.authGroups[0].value;
@@ -302,17 +312,21 @@
         }
         this.modelApiLog = this.t('running') + '\n';
         this.modelApiLoading = true;
+        const payload = { model };
+        if (this.modelApiBaseUrl !== undefined) payload.baseUrl = (this.modelApiBaseUrl || '').trim();
+        if ((this.modelApiKey || '').trim()) payload.apiKey = (this.modelApiKey || '').trim();
         try {
           const res = await fetch('/setup/api/model', {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model })
+            body: JSON.stringify(payload)
           });
           const j = await res.json().catch(() => ({}));
           this.modelApiLog += j.output || res.statusText || 'Done.\n';
           if (j.ok) {
             this.currentModel = model;
+            if (payload.apiKey) this.modelApiKey = '';
             await this.refreshStatus();
           }
         } catch (e) {
@@ -626,6 +640,15 @@
           <label class="label" x-text="t('modelLabel')"></label>
           <input x-model="modelApiModel" type="text" :placeholder="t('modelPlaceholder')" class="input" />
           <p class="form-hint" x-text="t('formHintModel')"></p>
+        </div>
+        <div class="form-group">
+          <label class="label" x-text="t('apiBaseUrlLabel')"></label>
+          <input x-model="modelApiBaseUrl" type="url" :placeholder="t('apiBaseUrlPlaceholder')" class="input" />
+        </div>
+        <div class="form-group">
+          <label class="label" x-text="t('apiKeyLabel')"></label>
+          <input x-model="modelApiKey" type="password" :placeholder="t('apiKeyPlaceholder')" class="input" />
+          <p class="form-hint" x-text="t('modelApiKeyHint')"></p>
         </div>
         <button @click="saveModelApi()" :disabled="modelApiLoading" class="btn btn-primary">
           <span x-show="!modelApiLoading" x-text="t('modelApiSave')"></span>
