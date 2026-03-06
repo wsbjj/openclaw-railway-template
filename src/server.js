@@ -272,6 +272,7 @@ async function startGateway() {
 
   const stopResult = await runCmd(OPENCLAW_NODE, clawArgs(["gateway", "stop"]));
   log.info("gateway", `stop existing gateway exit=${stopResult.code}`);
+  await sleep(2000);
 
   const args = [
     "gateway",
@@ -359,9 +360,12 @@ async function restartGateway() {
     } catch (err) {
       log.warn("gateway", `kill error: ${err.message}`);
     }
-    await sleep(750);
     gatewayProc = null;
+    await sleep(500);
   }
+  const stopResult = await runCmd(OPENCLAW_NODE, clawArgs(["gateway", "stop"]));
+  log.info("gateway", `restart: gateway stop exit=${stopResult.code}`);
+  await sleep(2500);
   return ensureGatewayRunning();
 }
 
