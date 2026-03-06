@@ -186,12 +186,13 @@ function getModelProviderConfigForStatus(config, currentModel) {
 function getMemorySearchConfigForStatus(config) {
   const defaults = config.agents?.defaults ?? {};
   const mem = defaults.memorySearch ?? {};
+  const remote = mem.remote ?? config.memorySearch?.remote ?? {};
   const enabled = mem.enabled !== false;
   const provider = mem.provider ?? config.memorySearch?.provider ?? "";
-  const remote = config.memorySearch?.remote ?? {};
   return {
     enabled,
     provider: provider || "auto",
+    model: mem.model ?? "",
     remoteBaseUrl: remote.baseUrl ?? "",
     remoteApiKeySet: Boolean(
       remote.apiKey &&
@@ -792,6 +793,43 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
         );
         extra += `[models set] exit=${modelResult.code}\n${modelResult.output || ""}`;
       }
+      const authChoiceToProvider = {
+        "openai-api-key": "openai",
+        apiKey: "anthropic",
+        "gemini-api-key": "google",
+        "minimax-api": "minimax",
+        "minimax-api-lightning": "minimax",
+        "minimax-api-2.5": "minimax",
+        "moonshot-api-key": "moonshot",
+        "kimi-code-api-key": "moonshot",
+        "zai-api-key": "zai",
+        "openrouter-api-key": "openrouter",
+        "ai-gateway-api-key": "ai-gateway",
+      };
+      const providerFromAuth = authChoiceToProvider[payload.authChoice];
+      const secret = (payload.authSecret || "").trim();
+      if (providerFromAuth && secret) {
+        extra += `[setup] Persisting API key for provider ${providerFromAuth}...\n`;
+        const config = getConfig();
+        const providers = config.models?.providers ?? {};
+        const defaultProvider = DEFAULT_PROVIDER_CONFIG[providerFromAuth];
+        const existing = providers[providerFromAuth] ?? {};
+        const merged = { ...(defaultProvider ?? {}), ...existing, apiKey: secret };
+        if (!config.models) config.models = {};
+        if (!config.models.providers) config.models.providers = {};
+        config.models.providers[providerFromAuth] = merged;
+        const setProviderResult = await runCmd(
+          OPENCLAW_NODE,
+          clawArgs([
+            "config",
+            "set",
+            "--json",
+            `models.providers.${providerFromAuth}`,
+            JSON.stringify(merged),
+          ]),
+        );
+        extra += `[config models.providers.${providerFromAuth}] exit=${setProviderResult.code}\n`;
+      }
       const isMinimax =
         payload.authChoice?.startsWith("minimax-") &&
         (payload.model?.trim() || "").startsWith("minimax/");
@@ -952,6 +990,11 @@ app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
     const ok = modelResult.code === 0;
     lines.push(`[models set] exit=${modelResult.code}`);
     if (modelResult.output) lines.push(modelResult.output);
+    if (ok) {
+      lines.push("Restarting gateway to apply API key / base URL...");
+      await restartGateway();
+      lines.push("Gateway restarted.");
+    }
     lines.push(ok ? `Model set to ${model}` : `Failed: exit ${modelResult.code}`);
 
     return res.status(ok ? 200 : 500).json({
@@ -977,7 +1020,8 @@ app.post("/setup/api/memory-search", requireSetupAuth, async (req, res) => {
   }
   const payload = req.body || {};
   const enabled = payload.enabled !== false;
-  const provider = typeof payload.provider === "string" ? payload.provider.trim() || "auto" : "auto";
+  let provider = typeof payload.provider === "string" ? payload.provider.trim() || "auto" : "auto";
+  const embeddingModel = typeof payload.embeddingModel === "string" ? payload.embeddingModel.trim() : "";
   const remoteBaseUrl = typeof payload.remoteBaseUrl === "string" ? payload.remoteBaseUrl.trim() : "";
   const remoteApiKey = typeof payload.remoteApiKey === "string" ? payload.remoteApiKey.trim() : "";
   if (MEMORY_SEARCH_PROVIDERS.indexOf(provider) === -1) {
@@ -1000,29 +1044,52 @@ app.post("/setup/api/memory-search", requireSetupAuth, async (req, res) => {
       ]),
     );
     lines.push(`[memorySearch.enabled] exit=${setEnabled.code}`);
-    const providerValue = provider === "auto" ? "" : provider;
-    const setProvider = await runCmd(
-      OPENCLAW_NODE,
-      clawArgs([
-        "config",
-        "set",
-        "--json",
-        "agents.defaults.memorySearch.provider",
-        JSON.stringify(providerValue),
-      ]),
-    );
-    lines.push(`[memorySearch.provider] exit=${setProvider.code}`);
     if (provider === "remote") {
+      provider = "openai";
+    }
+    const providerValue = provider === "auto" ? "" : provider;
+    if (providerValue !== "") {
+      const setProvider = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs([
+          "config",
+          "set",
+          "--json",
+          "agents.defaults.memorySearch.provider",
+          JSON.stringify(providerValue),
+        ]),
+      );
+      lines.push(`[memorySearch.provider] exit=${setProvider.code}`);
+    }
+    if (embeddingModel) {
+      const setModel = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs([
+          "config",
+          "set",
+          "--json",
+          "agents.defaults.memorySearch.model",
+          JSON.stringify(embeddingModel),
+        ]),
+      );
+      lines.push(`[memorySearch.model] exit=${setModel.code}`);
+    }
+    const isRemote = payload.provider === "remote" || (payload.provider === "openai" && (remoteBaseUrl || remoteApiKey));
+    if (isRemote) {
       const config = getConfig();
-      const remote = { ...(config.memorySearch?.remote ?? {}), baseUrl: remoteBaseUrl };
-      if (remoteApiKey) remote.apiKey = remoteApiKey;
+      const existingRemote = config.agents?.defaults?.memorySearch?.remote ?? {};
+      const remote = {
+        ...existingRemote,
+        ...(remoteBaseUrl ? { baseUrl: remoteBaseUrl } : {}),
+        ...(remoteApiKey ? { apiKey: remoteApiKey } : {}),
+      };
       const setRemote = await runCmd(
         OPENCLAW_NODE,
         clawArgs([
           "config",
           "set",
           "--json",
-          "memorySearch.remote",
+          "agents.defaults.memorySearch.remote",
           JSON.stringify(remote),
         ]),
       );

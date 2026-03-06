@@ -115,6 +115,8 @@
       memorySearchProviderVoyage: 'Voyage',
       memorySearchProviderMistral: 'Mistral',
       memorySearchProviderRemote: 'Custom (OpenAI-compatible endpoint)',
+      memorySearchModelLabel: 'Embedding model',
+      memorySearchModelPlaceholder: 'e.g. text-embedding-3-small, gemini-embedding-001, or custom model ID',
       memorySearchRemoteUrl: 'Embedding API base URL',
       memorySearchRemoteUrlPlaceholder: 'https://your-embedding-api.com/v1',
       memorySearchSave: 'Save',
@@ -224,6 +226,8 @@
       memorySearchProviderVoyage: 'Voyage',
       memorySearchProviderMistral: 'Mistral',
       memorySearchProviderRemote: '自定义（OpenAI 兼容端点）',
+      memorySearchModelLabel: '嵌入模型',
+      memorySearchModelPlaceholder: '如 text-embedding-3-small、gemini-embedding-001 或自定义模型 ID',
       memorySearchRemoteUrl: '嵌入 API 地址',
       memorySearchRemoteUrlPlaceholder: 'https://your-embedding-api.com/v1',
       memorySearchSave: '保存',
@@ -272,6 +276,7 @@
       memorySearchProvider: 'auto',
       memorySearchRemoteBaseUrl: '',
       memorySearchRemoteApiKey: '',
+      memorySearchModel: '',
       memorySearchLog: '',
       memorySearchLoading: false,
 
@@ -326,6 +331,7 @@
             this.memorySearchEnabled = msc.enabled !== false;
             this.memorySearchProvider = msc.provider || 'auto';
             this.memorySearchRemoteBaseUrl = msc.remoteBaseUrl || '';
+            this.memorySearchModel = msc.model || '';
           }
           this.authGroups = j.authGroups || [];
           if (this.authGroups.length > 0) {
@@ -393,6 +399,7 @@
           enabled: this.memorySearchEnabled,
           provider: this.memorySearchProvider || 'auto'
         };
+        if ((this.memorySearchModel || '').trim()) payload.embeddingModel = (this.memorySearchModel || '').trim();
         if (this.memorySearchProvider === 'remote') {
           payload.remoteBaseUrl = (this.memorySearchRemoteBaseUrl || '').trim();
           if ((this.memorySearchRemoteApiKey || '').trim()) payload.remoteApiKey = (this.memorySearchRemoteApiKey || '').trim();
@@ -771,6 +778,10 @@
             <option value="mistral" x-text="t('memorySearchProviderMistral')"></option>
             <option value="remote" x-text="t('memorySearchProviderRemote')"></option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="label" x-text="t('memorySearchModelLabel')"></label>
+          <input x-model="memorySearchModel" type="text" :placeholder="t('memorySearchModelPlaceholder')" class="input" />
         </div>
         <template x-if="memorySearchProvider === 'remote'">
           <div>
