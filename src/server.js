@@ -475,8 +475,9 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
     {
       value: "minimax",
       label: "MiniMax",
-      hint: "M2.1 (recommended)",
+      hint: "M2.5 (recommended)",
       options: [
+        { value: "minimax-api-2.5", label: "MiniMax M2.5" },
         { value: "minimax-api", label: "MiniMax M2.1" },
         { value: "minimax-api-lightning", label: "MiniMax M2.1 Lightning" },
       ],
@@ -515,6 +516,21 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
     },
   ];
 
+  let currentModel = null;
+  if (isConfigured()) {
+    try {
+      const r = await runCmd(
+        OPENCLAW_NODE,
+        clawArgs(["config", "get", "agents.defaults.model.primary"]),
+      );
+      if (r.code === 0 && r.output && r.output.trim()) {
+        currentModel = r.output.trim().replace(/^"|"$/g, "");
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   res.json({
     configured: isConfigured(),
     gatewayTarget: GATEWAY_TARGET,
@@ -522,6 +538,7 @@ app.get("/setup/api/status", requireSetupAuth, async (_req, res) => {
     channelsAddHelp: channelsHelp,
     authGroups,
     tuiEnabled: ENABLE_WEB_TUI,
+    currentModel,
   });
 });
 
@@ -562,6 +579,7 @@ function buildOnboardArgs(payload) {
       "zai-api-key": "--zai-api-key",
       "minimax-api": "--minimax-api-key",
       "minimax-api-lightning": "--minimax-api-key",
+      "minimax-api-2.5": "--minimax-api-key",
       "synthetic-api-key": "--synthetic-api-key",
       "opencode-zen": "--opencode-zen-api-key",
     };
@@ -610,6 +628,7 @@ const VALID_AUTH_CHOICES = [
   "zai-api-key",
   "minimax-api",
   "minimax-api-lightning",
+  "minimax-api-2.5",
   "qwen-portal",
   "github-copilot",
   "copilot-proxy",
@@ -701,6 +720,9 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
       );
       extra += `[config] gateway.trustedProxies exit=${proxiesResult.code}\n`;
 
+      if (payload.authChoice === "minimax-api-2.5" && !payload.model?.trim()) {
+        payload.model = "minimax/MiniMax-M2.5";
+      }
       if (payload.model?.trim()) {
         extra += `[setup] Setting model to ${payload.model.trim()}...\n`;
         const modelResult = await runCmd(
@@ -769,6 +791,40 @@ app.post("/setup/api/run", requireSetupAuth, async (req, res) => {
     });
   } catch (err) {
     log.error("setup", `run error: ${String(err)}`);
+    return res
+      .status(500)
+      .json({ ok: false, output: `Internal error: ${String(err)}` });
+  }
+});
+
+app.post("/setup/api/model", requireSetupAuth, async (req, res) => {
+  if (!isConfigured()) {
+    return res.status(400).json({
+      ok: false,
+      output: "Not configured. Run the setup wizard first.",
+    });
+  }
+  const payload = req.body || {};
+  const model = typeof payload.model === "string" ? payload.model.trim() : "";
+  if (!model) {
+    return res.status(400).json({
+      ok: false,
+      output: "Missing or invalid model. Provide provider/model-id (e.g. minimax/MiniMax-M2.5).",
+    });
+  }
+  try {
+    await ensureGatewayRunning();
+    const result = await runCmd(
+      OPENCLAW_NODE,
+      clawArgs(["models", "set", model]),
+    );
+    const ok = result.code === 0;
+    return res.status(ok ? 200 : 500).json({
+      ok,
+      output: result.output || (ok ? `Model set to ${model}` : `Failed: exit ${result.code}`),
+    });
+  } catch (err) {
+    log.error("setup", `model update error: ${String(err)}`);
     return res
       .status(500)
       .json({ ok: false, output: `Internal error: ${String(err)}` });

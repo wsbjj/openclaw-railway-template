@@ -94,6 +94,11 @@
       enterPairingCode: 'Please enter a pairing code',
       pairApproved: 'Pairing approved successfully',
       pairFailed: 'Pairing failed',
+      modelApiTitle: 'Model API Settings',
+      modelApiSubtitle: 'View or change the default LLM model (e.g. minimax/MiniMax-M2.5)',
+      currentModelLabel: 'Current model',
+      modelApiSave: 'Save model',
+      modelApiModelRequired: 'Please enter a model (provider/model-id).',
     },
     zh: {
       pageTitle: '个人 AI 助手',
@@ -179,6 +184,11 @@
       enterPairingCode: '请输入配对码',
       pairApproved: '配对已批准',
       pairFailed: '配对失败',
+      modelApiTitle: '大模型 API 设置',
+      modelApiSubtitle: '查看或修改当前默认大模型（如 minimax/MiniMax-M2.5）',
+      currentModelLabel: '当前模型',
+      modelApiSave: '保存模型',
+      modelApiModelRequired: '请输入模型（格式：提供商/模型-id）。',
     },
   };
   document.addEventListener('alpine:init', () => {
@@ -213,6 +223,10 @@
       devices: [],
       devicesPending: [],
       devicesPaired: [],
+      currentModel: '',
+      modelApiModel: '',
+      modelApiLog: '',
+      modelApiLoading: false,
 
       get currentGroup() {
         return this.authGroups.find(g => g.value === this.selectedGroup);
@@ -252,6 +266,8 @@
           this.openclawVersion = j.openclawVersion || '';
           this.tuiEnabled = j.tuiEnabled || false;
           this.status = j.configured ? this.t('statusConfigured') : this.t('statusNotConfigured');
+          this.currentModel = j.currentModel || '';
+          if (this.currentModel && !this.modelApiModel) this.modelApiModel = this.currentModel;
           this.authGroups = j.authGroups || [];
           if (this.authGroups.length > 0) {
             this.selectedGroup = this.authGroups[0].value;
@@ -274,6 +290,35 @@
         this.authChoices = (group && group.options) ? group.options : [];
         if (this.authChoices.length > 0) {
           this.selectedAuth = this.authChoices[0].value;
+          if (this.selectedAuth === 'minimax-api-2.5' && !this.model) this.model = 'minimax/MiniMax-M2.5';
+        }
+      },
+
+      async saveModelApi() {
+        const model = (this.modelApiModel || '').trim();
+        if (!model) {
+          alert(this.t('modelApiModelRequired'));
+          return;
+        }
+        this.modelApiLog = this.t('running') + '\n';
+        this.modelApiLoading = true;
+        try {
+          const res = await fetch('/setup/api/model', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ model })
+          });
+          const j = await res.json().catch(() => ({}));
+          this.modelApiLog += j.output || res.statusText || 'Done.\n';
+          if (j.ok) {
+            this.currentModel = model;
+            await this.refreshStatus();
+          }
+        } catch (e) {
+          this.modelApiLog += 'Error: ' + String(e) + '\n';
+        } finally {
+          this.modelApiLoading = false;
         }
       },
 
@@ -567,6 +612,29 @@
       <div class="card">
         <h2 class="card-title" x-text="t('setupComplete')"></h2>
         <p class="text-muted text-sm" x-text="t('setupCompleteDesc')"></p>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title" style="font-size:1rem" x-text="t('modelApiTitle')"></h3>
+        <p class="card-subtitle" x-text="t('modelApiSubtitle')"></p>
+        <div class="form-group">
+          <label class="label" x-text="t('currentModelLabel')"></label>
+          <p class="text-sm text-muted" x-show="currentModel" x-text="currentModel"></p>
+          <p class="text-sm text-muted" x-show="!currentModel" x-text="t('none')"></p>
+        </div>
+        <div class="form-group">
+          <label class="label" x-text="t('modelLabel')"></label>
+          <input x-model="modelApiModel" type="text" :placeholder="t('modelPlaceholder')" class="input" />
+          <p class="form-hint" x-text="t('formHintModel')"></p>
+        </div>
+        <button @click="saveModelApi()" :disabled="modelApiLoading" class="btn btn-primary">
+          <span x-show="!modelApiLoading" x-text="t('modelApiSave')"></span>
+          <span x-show="modelApiLoading" style="display:inline-flex;align-items:center;gap:0.5rem">
+            <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+            <span x-text="t('running')"></span>
+          </span>
+        </button>
+        <div x-show="modelApiLog" class="log-output mt-4" style="margin-top:1rem" x-text="modelApiLog"></div>
       </div>
 
       <div class="card">
