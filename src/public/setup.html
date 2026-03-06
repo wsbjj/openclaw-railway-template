@@ -9,8 +9,181 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script>
+  const I18N = {
+    en: {
+      pageTitle: 'Personal AI Assistant',
+      pageSubtitle: 'Configure your AI assistant in a few simple steps',
+      statusLoading: 'Loading...',
+      statusConfigured: 'Configured - open /openclaw',
+      statusNotConfigured: 'Not configured - run setup below',
+      statusError: 'Error: ',
+      openOpenClaw: 'Open OpenClaw UI',
+      openTerminal: 'Open Terminal',
+      setupComplete: 'Setup Complete',
+      setupCompleteDesc: 'Your OpenClaw instance is configured and running',
+      devices: 'Devices',
+      devicesSubtitle: 'Manage devices and channel access',
+      approveChannelAccess: 'Approve Channel Access',
+      approveChannelAccessDesc: 'Grant DM access to users who have requested access on Telegram or Discord.',
+      manageDevices: 'Manage Devices',
+      manageDevicesDesc: 'Approve or reject browser/device pairing requests for the Control UI.',
+      maintenance: 'Maintenance',
+      maintenanceSubtitle: 'Health checks and data export',
+      runDoctor: 'Run Doctor',
+      runDoctorDesc: 'Performs health checks and repairs broken configuration.',
+      running: 'Running...',
+      exportData: 'Export Data',
+      exportDataDesc: 'Download a password-protected ZIP of your config and workspace data.',
+      exporting: 'Exporting...',
+      viewLogs: 'View Logs',
+      viewLogsDesc: 'Stream server logs in real-time for debugging and monitoring.',
+      dangerZone: 'Danger Zone',
+      dangerZoneDesc: 'Destructive actions that cannot be undone',
+      resetSetup: 'Reset Setup',
+      resetSetupDesc: 'Deletes the config file so you can run onboarding again from scratch.',
+      step1Title: 'Model & Authentication',
+      step1Subtitle: 'Choose your AI provider and authentication method',
+      providerGroup: 'Provider Group',
+      authMethod: 'Auth Method',
+      apiKeyLabel: 'API Key / Token',
+      apiKeyPlaceholder: 'Paste your API key or token',
+      modelLabel: 'Model',
+      modelPlaceholder: 'e.g. openai/gpt-4.1, anthropic/claude-sonnet-4',
+      formHintModel: 'Format: provider/model-name',
+      channelsTitle: 'Channels',
+      channelsSubtitle: 'Connect messaging platforms (optional — can be added later)',
+      telegramHint: 'Message @BotFather on Telegram and run /newbot',
+      discordHint: 'Enable MESSAGE CONTENT INTENT in Bot → Privileged Gateway Intents',
+      slackBotPlaceholder: 'Bot token (xoxb-...)',
+      slackAppPlaceholder: 'App token (xapp-...)',
+      runSetupTitle: 'Run Setup',
+      runSetupSubtitle: 'Review your configuration and start OpenClaw',
+      configSummary: 'Configuration Summary',
+      provider: 'Provider',
+      auth: 'Auth',
+      model: 'Model',
+      channels: 'Channels',
+      none: 'None',
+      default: 'Default',
+      runSetupBtn: 'Run Setup',
+      reset: 'Reset',
+      resetNote: 'Reset deletes the config file so you can rerun onboarding. Channel access approval grants DM access when dmPolicy=pairing.',
+      back: 'Back',
+      next: 'Next',
+      modalManageDevices: 'Manage Devices',
+      modalManageDevicesDesc: 'When a new browser connects to the Control UI, it requires a one-time pairing approval.',
+      approveLatestRequest: 'Approve Latest Request',
+      loading: 'Loading...',
+      pendingRequests: 'Pending Requests',
+      noPendingRequests: 'No pending requests',
+      pairedDevices: 'Paired Devices',
+      noPairedDevices: 'No paired devices',
+      approve: 'Approve',
+      reject: 'Reject',
+      unzipTitle: 'Unzip Instructions',
+      unzipDesc: 'The exported ZIP is password-protected with your SETUP_PASSWORD.',
+      unzipWindows: 'Use <a href="https://www.7-zip.org/" target="_blank" rel="noopener" class="link-teal" style="text-decoration:underline">7-Zip</a> to extract — right-click the file, select "Extract Here", and enter your password when prompted.',
+      close: 'Close',
+      pairingCodeLabel: 'Pairing Code',
+      pairingCodePlaceholder: 'e.g. 3EY4PUYS',
+      channelLabel: 'Channel',
+      selectChannel: 'Select channel...',
+      cancel: 'Cancel',
+      resetConfirm: 'Reset setup? This deletes the config file so onboarding can run again.',
+      channelMustBe: 'Channel must be "telegram" or "discord"',
+      enterPairingCode: 'Please enter a pairing code',
+      pairApproved: 'Pairing approved successfully',
+      pairFailed: 'Pairing failed',
+    },
+    zh: {
+      pageTitle: '个人 AI 助手',
+      pageSubtitle: '几步即可配置你的 AI 助手',
+      statusLoading: '加载中...',
+      statusConfigured: '已配置 - 打开 /openclaw',
+      statusNotConfigured: '未配置 - 请完成下方设置',
+      statusError: '错误：',
+      openOpenClaw: '打开 OpenClaw 界面',
+      openTerminal: '打开终端',
+      setupComplete: '设置完成',
+      setupCompleteDesc: '你的 OpenClaw 实例已配置并运行中',
+      devices: '设备',
+      devicesSubtitle: '管理设备与频道访问',
+      approveChannelAccess: '批准频道访问',
+      approveChannelAccessDesc: '为在 Telegram 或 Discord 上请求访问的用户授予私信权限。',
+      manageDevices: '管理设备',
+      manageDevicesDesc: '批准或拒绝控制界面的浏览器/设备配对请求。',
+      maintenance: '维护',
+      maintenanceSubtitle: '健康检查与数据导出',
+      runDoctor: '运行诊断',
+      runDoctorDesc: '执行健康检查并修复异常配置。',
+      running: '运行中...',
+      exportData: '导出数据',
+      exportDataDesc: '下载包含配置与工作区数据的加密 ZIP 文件。',
+      exporting: '导出中...',
+      viewLogs: '查看日志',
+      viewLogsDesc: '实时查看服务器日志，便于调试与监控。',
+      dangerZone: '危险操作',
+      dangerZoneDesc: '不可恢复的破坏性操作',
+      resetSetup: '重置设置',
+      resetSetupDesc: '删除配置文件，以便重新从头完成引导。',
+      step1Title: '模型与认证',
+      step1Subtitle: '选择 AI 服务商与认证方式',
+      providerGroup: '提供商分组',
+      authMethod: '认证方式',
+      apiKeyLabel: 'API 密钥 / Token',
+      apiKeyPlaceholder: '粘贴你的 API 密钥或 Token',
+      modelLabel: '模型',
+      modelPlaceholder: '例如 openai/gpt-4.1、anthropic/claude-sonnet-4',
+      formHintModel: '格式：提供商/模型名',
+      channelsTitle: '频道',
+      channelsSubtitle: '连接即时通讯平台（可选，可稍后添加）',
+      telegramHint: '在 Telegram 中联系 @BotFather 并执行 /newbot',
+      discordHint: '在 Bot → Privileged Gateway Intents 中启用 MESSAGE CONTENT INTENT',
+      slackBotPlaceholder: 'Bot token (xoxb-...)',
+      slackAppPlaceholder: 'App token (xapp-...)',
+      runSetupTitle: '运行设置',
+      runSetupSubtitle: '确认配置并启动 OpenClaw',
+      configSummary: '配置摘要',
+      provider: '提供商',
+      auth: '认证',
+      model: '模型',
+      channels: '频道',
+      none: '无',
+      default: '默认',
+      runSetupBtn: '运行设置',
+      reset: '重置',
+      resetNote: '重置将删除配置文件以便重新引导。当 dmPolicy=pairing 时，批准频道访问可授予私信权限。',
+      back: '上一步',
+      next: '下一步',
+      modalManageDevices: '管理设备',
+      modalManageDevicesDesc: '新浏览器连接控制界面时，需要一次性配对批准。',
+      approveLatestRequest: '批准最新请求',
+      loading: '加载中...',
+      pendingRequests: '待处理请求',
+      noPendingRequests: '暂无待处理请求',
+      pairedDevices: '已配对设备',
+      noPairedDevices: '暂无已配对设备',
+      approve: '批准',
+      reject: '拒绝',
+      unzipTitle: '解压说明',
+      unzipDesc: '导出的 ZIP 使用你的 SETUP_PASSWORD 加密。',
+      unzipWindows: '使用 <a href="https://www.7-zip.org/" target="_blank" rel="noopener" class="link-teal" style="text-decoration:underline">7-Zip</a> 解压 — 右键文件选择“解压到当前文件夹”，按提示输入密码。',
+      close: '关闭',
+      pairingCodeLabel: '配对码',
+      pairingCodePlaceholder: '例如 3EY4PUYS',
+      channelLabel: '频道',
+      selectChannel: '选择频道...',
+      cancel: '取消',
+      resetConfirm: '确定要重置设置？将删除配置文件并重新进行引导。',
+      channelMustBe: '频道必须为 "telegram" 或 "discord"',
+      enterPairingCode: '请输入配对码',
+      pairApproved: '配对已批准',
+      pairFailed: '配对失败',
+    },
+  };
   document.addEventListener('alpine:init', () => {
     Alpine.data('setupApp', () => ({
+      locale: (typeof localStorage !== 'undefined' && localStorage.getItem('openclaw-locale')) || 'en',
       step: 1,
       totalSteps: 3,
       status: 'Loading...',
@@ -45,6 +218,18 @@
         return this.authGroups.find(g => g.value === this.selectedGroup);
       },
 
+      t(key) {
+        const lang = I18N[this.locale] || I18N.en;
+        return lang[key] != null ? lang[key] : (I18N.en[key] || key);
+      },
+
+      setLocale(lang) {
+        this.locale = lang;
+        try { localStorage.setItem('openclaw-locale', lang); } catch (_) {}
+        this.status = this.configured ? this.t('statusConfigured') : this.t('statusNotConfigured');
+        try { document.title = '🦞 OpenClaw — ' + this.t('pageTitle'); } catch (_) {}
+      },
+
       async init() {
         await this.refreshStatus();
       },
@@ -60,13 +245,13 @@
       },
 
       async refreshStatus() {
-        this.status = 'Loading...';
+        this.status = this.t('statusLoading');
         try {
           const j = await this.httpJson('/setup/api/status');
           this.configured = j.configured;
           this.openclawVersion = j.openclawVersion || '';
           this.tuiEnabled = j.tuiEnabled || false;
-          this.status = j.configured ? 'Configured - open /openclaw' : 'Not configured - run setup below';
+          this.status = j.configured ? this.t('statusConfigured') : this.t('statusNotConfigured');
           this.authGroups = j.authGroups || [];
           if (this.authGroups.length > 0) {
             this.selectedGroup = this.authGroups[0].value;
@@ -76,9 +261,11 @@
             this.log += '\nNote: this openclaw build does not list telegram in `channels add --help`. Telegram auto-add will be skipped.\n';
           }
           this.isReady = true;
+          try { document.title = '🦞 OpenClaw — ' + this.t('pageTitle'); } catch (_) {}
         } catch (e) {
-          this.status = 'Error: ' + String(e);
+          this.status = this.t('statusError') + String(e);
           this.isReady = true;
+          try { document.title = '🦞 OpenClaw — ' + this.t('pageTitle'); } catch (_) {}
         }
       },
 
@@ -140,12 +327,12 @@
       async approvePairing() {
         const channel = this.pairingChannel.trim().toLowerCase();
         if (channel !== 'telegram' && channel !== 'discord') {
-          alert('Channel must be "telegram" or "discord"');
+          alert(this.t('channelMustBe'));
           return;
         }
         const code = this.pairingCode.trim();
         if (!code) {
-          alert('Please enter a pairing code');
+          alert(this.t('enterPairingCode'));
           return;
         }
         this.showPairingModal = false;
@@ -162,22 +349,22 @@
           let result;
           try { result = JSON.parse(t); } catch (_e) { result = { ok: false, output: t }; }
           if (result.ok) {
-            const msg = result.output || 'Pairing approved successfully';
+            const msg = result.output || this.t('pairApproved');
             this.log += '✓ ' + msg + '\n';
             alert('✓ ' + msg.trim());
           } else {
-            const msg = result.output || result.error || 'Unknown error';
+            const msg = result.output || result.error || this.t('pairFailed');
             this.log += '✗ Failed: ' + msg + '\n';
-            alert('✗ Pairing failed: ' + msg.trim());
+            alert('✗ ' + this.t('pairFailed') + ': ' + msg.trim());
           }
         } catch (e) {
           this.log += '✗ Error: ' + String(e) + '\n';
-          alert('✗ Pairing failed: ' + String(e));
+          alert('✗ ' + this.t('pairFailed') + ': ' + String(e));
         }
       },
 
       async resetSetup() {
-        if (!confirm('Reset setup? This deletes the config file so onboarding can run again.')) return;
+        if (!confirm(this.t('resetConfirm'))) return;
         this.log = 'Resetting...\n';
         this.loading = true;
 
@@ -346,8 +533,15 @@
         <img src="https://raw.githubusercontent.com/openclaw/openclaw/main/docs/assets/openclaw-logo-text.png" alt="OpenClaw" class="logo-img">
       </picture>
     </div>
-    <h1 class="page-title">Personal AI Assistant</h1>
-    <p class="page-subtitle">Configure your AI assistant in a few simple steps</p>
+    <div class="locale-wrap">
+      <h1 class="page-title" x-text="t('pageTitle')"></h1>
+      <p class="page-subtitle" x-text="t('pageSubtitle')"></p>
+      <div class="locale-toggle">
+        <button type="button" @click="setLocale('zh')" :class="{ 'locale-active': locale === 'zh' }" class="locale-btn">中文</button>
+        <span class="locale-sep">|</span>
+        <button type="button" @click="setLocale('en')" :class="{ 'locale-active': locale === 'en' }" class="locale-btn">English</button>
+      </div>
+    </div>
 
     <div class="card card-compact mb-6">
       <div class="card-header">
@@ -359,11 +553,11 @@
       </div>
       <div x-show="configured" class="card-links">
         <a href="/openclaw" target="_blank" class="inline-link link-teal">
-          Open OpenClaw UI
+          <span x-text="t('openOpenClaw')"></span>
           <svg class="icon-link" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
         </a>
         <a x-show="tuiEnabled" href="/tui" target="_blank" class="inline-link link-purple">
-          Open Terminal
+          <span x-text="t('openTerminal')"></span>
           <svg class="icon-link" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         </a>
       </div>
@@ -371,25 +565,23 @@
 
     <div x-show="isReady && configured" x-cloak class="card-group">
       <div class="card">
-        <h2 class="card-title">Setup Complete</h2>
-        <p class="text-muted text-sm">Your OpenClaw instance is configured and running</p>
+        <h2 class="card-title" x-text="t('setupComplete')"></h2>
+        <p class="text-muted text-sm" x-text="t('setupCompleteDesc')"></p>
       </div>
 
       <div class="card">
-        <h3 class="card-title" style="font-size:1rem">Devices</h3>
-        <p class="card-subtitle">Manage devices and channel access</p>
+        <h3 class="card-title" style="font-size:1rem" x-text="t('devices')"></h3>
+        <p class="card-subtitle" x-text="t('devicesSubtitle')"></p>
         <div class="action-grid">
           <div class="action-card action-blue">
             <div class="action-card-header">
               <div class="action-icon">
                 <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
               </div>
-              <span class="action-title">Approve Channel Access</span>
+              <span class="action-title" x-text="t('approveChannelAccess')"></span>
             </div>
-            <p class="action-desc">Grant DM access to users who have requested access on Telegram or Discord.</p>
-            <button @click="openPairingModal()" :disabled="loading" class="action-btn">
-              Approve Channel Access
-            </button>
+            <p class="action-desc" x-text="t('approveChannelAccessDesc')"></p>
+            <button @click="openPairingModal()" :disabled="loading" class="action-btn" x-text="t('approveChannelAccess')"></button>
           </div>
 
           <div class="action-card action-violet">
@@ -397,33 +589,31 @@
               <div class="action-icon">
                 <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
               </div>
-              <span class="action-title">Manage Devices</span>
+              <span class="action-title" x-text="t('manageDevices')"></span>
             </div>
-            <p class="action-desc">Approve or reject browser/device pairing requests for the Control UI.</p>
-            <button @click="openDevicesModal()" :disabled="loading" class="action-btn">
-              Manage Devices
-            </button>
+            <p class="action-desc" x-text="t('manageDevicesDesc')"></p>
+            <button @click="openDevicesModal()" :disabled="loading" class="action-btn" x-text="t('manageDevices')"></button>
           </div>
         </div>
       </div>
 
       <div class="card">
-        <h3 class="card-title" style="font-size:1rem">Maintenance</h3>
-        <p class="card-subtitle">Health checks and data export</p>
+        <h3 class="card-title" style="font-size:1rem" x-text="t('maintenance')"></h3>
+        <p class="card-subtitle" x-text="t('maintenanceSubtitle')"></p>
         <div class="action-grid mb-4">
           <div class="action-card action-amber">
             <div class="action-card-header">
               <div class="action-icon">
                 <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               </div>
-              <span class="action-title">Run Doctor</span>
+              <span class="action-title" x-text="t('runDoctor')"></span>
             </div>
-            <p class="action-desc">Performs health checks and repairs broken configuration.</p>
+            <p class="action-desc" x-text="t('runDoctorDesc')"></p>
             <button @click="runDoctor()" :disabled="loading" class="action-btn">
-              <span x-show="!loading">Run Doctor</span>
+              <span x-show="!loading" x-text="t('runDoctor')"></span>
               <span x-show="loading" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
                 <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                Running...
+                <span x-text="t('running')"></span>
               </span>
             </button>
           </div>
@@ -433,14 +623,14 @@
               <div class="action-icon">
                 <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               </div>
-              <span class="action-title">Export Data</span>
+              <span class="action-title" x-text="t('exportData')"></span>
             </div>
-            <p class="action-desc">Download a password-protected ZIP of your config and workspace data.</p>
+            <p class="action-desc" x-text="t('exportDataDesc')"></p>
             <button @click="exportData()" :disabled="loading || exporting" class="action-btn">
-              <span x-show="!exporting">Export Data</span>
+              <span x-show="!exporting" x-text="t('exportData')"></span>
               <span x-show="exporting" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
                 <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                Exporting...
+                <span x-text="t('exporting')"></span>
               </span>
             </button>
           </div>
@@ -450,12 +640,10 @@
               <div class="action-icon">
                 <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
               </div>
-              <span class="action-title">View Logs</span>
+              <span class="action-title" x-text="t('viewLogs')"></span>
             </div>
-            <p class="action-desc">Stream server logs in real-time for debugging and monitoring.</p>
-            <a href="/logs" target="_blank" class="action-btn" style="display:block;text-align:center;text-decoration:none">
-              View Logs
-            </a>
+            <p class="action-desc" x-text="t('viewLogsDesc')"></p>
+            <a href="/logs" target="_blank" class="action-btn" style="display:block;text-align:center;text-decoration:none" x-text="t('viewLogs')"></a>
           </div>
         </div>
 
@@ -463,16 +651,14 @@
       </div>
 
       <div class="danger-card">
-        <h3 class="danger-title">Danger Zone</h3>
-        <p class="text-muted text-sm mb-4">Destructive actions that cannot be undone</p>
+        <h3 class="danger-title" x-text="t('dangerZone')"></h3>
+        <p class="text-muted text-sm mb-4" x-text="t('dangerZoneDesc')"></p>
         <div class="danger-row">
           <div>
-            <p class="danger-row-title">Reset Setup</p>
-            <p class="danger-row-desc">Deletes the config file so you can run onboarding again from scratch.</p>
+            <p class="danger-row-title" x-text="t('resetSetup')"></p>
+            <p class="danger-row-desc" x-text="t('resetSetupDesc')"></p>
           </div>
-          <button @click="resetSetup()" :disabled="loading" class="danger-btn shrink-0">
-            Reset Setup
-          </button>
+          <button @click="resetSetup()" :disabled="loading" class="danger-btn shrink-0" x-text="t('resetSetup')"></button>
         </div>
       </div>
     </div>
@@ -494,11 +680,11 @@
 
       <div x-show="step === 1" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
         <div class="card">
-          <h2 class="card-title">Model & Authentication</h2>
-          <p class="card-subtitle">Choose your AI provider and authentication method</p>
+          <h2 class="card-title" x-text="t('step1Title')"></h2>
+          <p class="card-subtitle" x-text="t('step1Subtitle')"></p>
 
           <div class="form-group">
-            <label class="label">Provider Group</label>
+            <label class="label" x-text="t('providerGroup')"></label>
             <select x-model="selectedGroup" @change="updateAuthChoices()" class="select">
               <template x-for="g in authGroups" :key="g.value">
                 <option :value="g.value" x-text="g.label + (g.hint ? ' — ' + g.hint : '')"></option>
@@ -507,7 +693,7 @@
           </div>
 
           <div class="form-group">
-            <label class="label">Auth Method</label>
+            <label class="label" x-text="t('authMethod')"></label>
             <select x-model="selectedAuth" class="select">
               <template x-for="o in authChoices" :key="o.value">
                 <option :value="o.value" x-text="o.label + (o.hint ? ' — ' + o.hint : '')"></option>
@@ -516,22 +702,22 @@
           </div>
 
           <div class="form-group">
-            <label class="label">API Key / Token</label>
-            <input x-model="authSecret" type="password" placeholder="Paste your API key or token" class="input" />
+            <label class="label" x-text="t('apiKeyLabel')"></label>
+            <input x-model="authSecret" type="password" :placeholder="t('apiKeyPlaceholder')" class="input" />
           </div>
 
           <div class="form-group">
-            <label class="label">Model</label>
-            <input x-model="model" type="text" placeholder="e.g. openai/gpt-4.1, anthropic/claude-sonnet-4" class="input" />
-            <p class="form-hint">Format: provider/model-name</p>
+            <label class="label" x-text="t('modelLabel')"></label>
+            <input x-model="model" type="text" :placeholder="t('modelPlaceholder')" class="input" />
+            <p class="form-hint" x-text="t('formHintModel')"></p>
           </div>
         </div>
       </div>
 
       <div x-show="step === 2" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
         <div class="card">
-          <h2 class="card-title">Channels</h2>
-          <p class="card-subtitle">Connect messaging platforms (optional — can be added later)</p>
+          <h2 class="card-title" x-text="t('channelsTitle')"></h2>
+          <p class="card-subtitle" x-text="t('channelsSubtitle')"></p>
 
           <div class="form-group">
             <div class="channel-card channel-telegram">
@@ -542,7 +728,7 @@
                 <span class="channel-name">Telegram</span>
               </div>
               <input x-model="telegramToken" type="password" placeholder="Bot token from @BotFather" class="input" />
-              <p class="form-hint">Message <code class="code-inline">@BotFather</code> on Telegram and run <code class="code-inline">/newbot</code></p>
+              <p class="form-hint" x-text="t('telegramHint')"></p>
             </div>
           </div>
 
@@ -555,7 +741,7 @@
                 <span class="channel-name">Discord</span>
               </div>
               <input x-model="discordToken" type="password" placeholder="Bot token from Developer Portal" class="input" />
-              <p class="form-hint">Enable <strong class="text-amber-strong">MESSAGE CONTENT INTENT</strong> in Bot → Privileged Gateway Intents</p>
+              <p class="form-hint" x-text="t('discordHint')"></p>
             </div>
           </div>
 
@@ -567,8 +753,8 @@
                 </div>
                 <span class="channel-name">Slack</span>
               </div>
-              <input x-model="slackBotToken" type="password" placeholder="Bot token (xoxb-...)" class="input" />
-              <input x-model="slackAppToken" type="password" placeholder="App token (xapp-...)" class="input" style="margin-top:0.75rem" />
+              <input x-model="slackBotToken" type="password" :placeholder="t('slackBotPlaceholder')" class="input" />
+              <input x-model="slackAppToken" type="password" :placeholder="t('slackAppPlaceholder')" class="input" style="margin-top:0.75rem" />
             </div>
           </div>
         </div>
@@ -576,31 +762,31 @@
 
       <div x-show="step === 3" x-transition:enter="fade-slide-enter" x-transition:enter-start="fade-slide-start" x-transition:enter-end="fade-slide-end">
         <div class="card">
-          <h2 class="card-title">Run Setup</h2>
-          <p class="card-subtitle">Review your configuration and start OpenClaw</p>
+          <h2 class="card-title" x-text="t('runSetupTitle')"></h2>
+          <p class="card-subtitle" x-text="t('runSetupSubtitle')"></p>
 
           <div class="config-summary">
-            <h3 class="config-summary-title">Configuration Summary</h3>
+            <h3 class="config-summary-title" x-text="t('configSummary')"></h3>
             <dl>
               <div class="config-row">
-                <dt>Provider</dt>
+                <dt x-text="t('provider')"></dt>
                 <dd x-text="selectedGroup || '—'"></dd>
               </div>
               <div class="config-row">
-                <dt>Auth</dt>
+                <dt x-text="t('auth')"></dt>
                 <dd x-text="selectedAuth || '—'"></dd>
               </div>
               <div class="config-row">
-                <dt>Model</dt>
-                <dd x-text="model || 'Default'"></dd>
+                <dt x-text="t('model')"></dt>
+                <dd x-text="model || t('default')"></dd>
               </div>
               <div class="config-row">
-                <dt>Channels</dt>
+                <dt x-text="t('channels')"></dt>
                 <dd>
                   <span x-show="telegramToken" class="badge badge-sky">Telegram</span>
                   <span x-show="discordToken" class="badge badge-indigo">Discord</span>
                   <span x-show="slackBotToken && slackAppToken" class="badge badge-green">Slack</span>
-                  <span x-show="!telegramToken && !discordToken && !(slackBotToken && slackAppToken)" class="text-muted">None</span>
+                  <span x-show="!telegramToken && !discordToken && !(slackBotToken && slackAppToken)" class="text-muted" x-text="t('none')"></span>
                 </dd>
               </div>
             </dl>
@@ -608,20 +794,18 @@
 
           <div class="btn-row">
             <button @click="runSetup()" :disabled="loading" class="btn btn-primary">
-              <span x-show="!loading">Run Setup</span>
+              <span x-show="!loading" x-text="t('runSetupBtn')"></span>
               <span x-show="loading" style="display:inline-flex;align-items:center;gap:0.5rem">
                 <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                Running...
+                <span x-text="t('running')"></span>
               </span>
             </button>
-            <button @click="resetSetup()" :disabled="loading" class="btn btn-ghost">
-              Reset
-            </button>
+            <button @click="resetSetup()" :disabled="loading" class="btn btn-ghost" x-text="t('reset')"></button>
           </div>
 
           <div x-show="log" class="log-output" x-text="log"></div>
 
-          <p class="text-xs text-muted mt-4">Reset deletes the config file so you can rerun onboarding. Channel access approval grants DM access when dmPolicy=pairing.</p>
+          <p class="text-xs text-muted mt-4" x-text="t('resetNote')"></p>
         </div>
       </div>
 
@@ -632,7 +816,7 @@
           class="nav-back"
         >
           <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-          Back
+          <span x-text="t('back')"></span>
         </button>
         <div x-show="step === 1"></div>
         <button
@@ -640,7 +824,7 @@
           @click="nextStep()"
           class="nav-next"
         >
-          Next
+          <span x-text="t('next')"></span>
           <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -649,7 +833,7 @@
     <div x-show="showDevicesModal" x-cloak class="modal-overlay" @click.self="showDevicesModal = false">
       <div class="modal-card modal-lg">
         <div class="modal-header">
-          <h3 class="modal-title">Manage Devices</h3>
+          <h3 class="modal-title" x-text="t('modalManageDevices')"></h3>
           <div class="modal-actions">
             <button @click="loadDevices()" :disabled="devicesLoading" class="btn-icon">
               <svg class="icon-sm" :class="devicesLoading && 'spinning'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -660,19 +844,19 @@
           </div>
         </div>
 
-        <p class="modal-desc">When a new browser connects to the Control UI, it requires a one-time pairing approval.</p>
+        <p class="modal-desc" x-text="t('modalManageDevicesDesc')"></p>
 
         <button @click="approveDevice()" :disabled="devicesLoading" class="btn-violet mb-4">
-          <span x-show="!devicesLoading">Approve Latest Request</span>
+          <span x-show="!devicesLoading" x-text="t('approveLatestRequest')"></span>
           <span x-show="devicesLoading" style="display:inline-flex;align-items:center;justify-content:center;gap:0.5rem">
             <svg class="spinner-inline" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path style="opacity:0.75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            Loading...
+            <span x-text="t('loading')"></span>
           </span>
         </button>
 
         <div class="section-block">
-          <h4 class="section-heading">Pending Requests</h4>
-          <div x-show="devicesPending.length === 0 && !devicesLoading" class="empty-state">No pending requests</div>
+          <h4 class="section-heading" x-text="t('pendingRequests')"></h4>
+          <div x-show="devicesPending.length === 0 && !devicesLoading" class="empty-state" x-text="t('noPendingRequests')"></div>
           <div class="device-list">
             <template x-for="req in devicesPending" :key="req.requestId || req.id">
               <div class="device-pending">
@@ -681,8 +865,8 @@
                   <p x-show="req.createdAt" class="device-pending-date" x-text="req.createdAt ? new Date(req.createdAt).toLocaleString() : ''"></p>
                 </div>
                 <div class="device-actions">
-                  <button @click="approveDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-emerald">Approve</button>
-                  <button @click="rejectDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-red-sm">Reject</button>
+                  <button @click="approveDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-emerald" x-text="t('approve')"></button>
+                  <button @click="rejectDevice(req.requestId || req.id)" :disabled="devicesLoading" class="btn-red-sm" x-text="t('reject')"></button>
                 </div>
               </div>
             </template>
@@ -690,8 +874,8 @@
         </div>
 
         <div class="section-block">
-          <h4 class="section-heading">Paired Devices</h4>
-          <div x-show="devicesPaired.length === 0 && !devicesLoading" class="empty-state">No paired devices</div>
+          <h4 class="section-heading" x-text="t('pairedDevices')"></h4>
+          <div x-show="devicesPaired.length === 0 && !devicesLoading" class="empty-state" x-text="t('noPairedDevices')"></div>
           <div class="device-list">
             <template x-for="dev in devicesPaired" :key="dev.deviceId || dev.id">
               <div class="device-paired">
@@ -711,42 +895,42 @@
 
     <div x-show="showExportInfo" x-cloak class="modal-overlay" @click.self="showExportInfo = false">
       <div class="modal-card modal-md">
-        <h3 class="modal-title mb-4">Unzip Instructions</h3>
-        <p class="text-sm text-muted mb-4">The exported ZIP is password-protected with your <strong>SETUP_PASSWORD</strong>.</p>
+        <h3 class="modal-title mb-4" x-text="t('unzipTitle')"></h3>
+        <p class="text-sm text-muted mb-4" x-text="t('unzipDesc')"></p>
         <div class="section-block">
           <p class="label">macOS / Linux</p>
           <code class="code-block">unzip -P YOUR_PASSWORD openclaw-export-*.zip</code>
         </div>
         <div class="section-block">
           <p class="label">Windows (PowerShell)</p>
-          <p class="text-sm text-muted">Use <a href="https://www.7-zip.org/" target="_blank" class="link-teal" style="text-decoration:underline">7-Zip</a> to extract — right-click the file, select "Extract Here", and enter your password when prompted.</p>
+          <p class="text-sm text-muted" x-html="t('unzipWindows')"></p>
         </div>
         <div class="section-block">
           <p class="label">Using 7z CLI</p>
           <code class="code-block">7z x -pYOUR_PASSWORD openclaw-export-*.zip</code>
         </div>
-        <button @click="showExportInfo = false" class="btn-close-full">Close</button>
+        <button @click="showExportInfo = false" class="btn-close-full" x-text="t('close')"></button>
       </div>
     </div>
 
     <div x-show="showPairingModal" x-cloak class="modal-overlay" @click.self="showPairingModal = false">
       <div class="modal-card modal-sm">
-        <h3 class="modal-title mb-4">Approve Channel Access</h3>
+        <h3 class="modal-title mb-4" x-text="t('approveChannelAccess')"></h3>
         <div class="form-group">
-          <label class="label">Channel</label>
+          <label class="label" x-text="t('channelLabel')"></label>
           <select x-model="pairingChannel" class="select">
-            <option value="">Select channel...</option>
+            <option value="" x-text="t('selectChannel')"></option>
             <option value="telegram">Telegram</option>
             <option value="discord">Discord</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="label">Pairing Code</label>
-          <input x-model="pairingCode" type="text" placeholder="e.g. 3EY4PUYS" class="input" />
+          <label class="label" x-text="t('pairingCodeLabel')"></label>
+          <input x-model="pairingCode" type="text" :placeholder="t('pairingCodePlaceholder')" class="input" />
         </div>
         <div class="btn-pair">
-          <button @click="approvePairing()" class="btn btn-primary">Approve</button>
-          <button @click="showPairingModal = false" class="btn btn-close-full" style="margin-top:0">Cancel</button>
+          <button @click="approvePairing()" class="btn btn-primary" x-text="t('approve')"></button>
+          <button @click="showPairingModal = false" class="btn btn-close-full" style="margin-top:0" x-text="t('cancel')"></button>
         </div>
       </div>
     </div>
