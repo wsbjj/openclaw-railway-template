@@ -1,5 +1,10 @@
 # OpenClaw Railway Template (1‑click deploy)
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/openclaw-railway-cn?utm_medium=integration&utm_source=template&utm_campaign=generic)
+
+Deploy the maintained OpenClaw wrapper template with a protected setup wizard, optional Web TUI,
+and a persistent Railway Volume.
+
 ## Setup
 
 <img width="2110" height="2032" alt="CleanShot 2026-02-23 at 21 57 59@2x" src="https://github.com/user-attachments/assets/28640eec-fa35-42f2-ba56-cb1fbb9525de" />
